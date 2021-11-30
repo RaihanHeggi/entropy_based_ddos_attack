@@ -32,10 +32,11 @@ class entropy_model:
         dist = [x / sum(bases) for x in bases]
         return entropy(dist, base=2.0)
 
+    # nilai pada log bisa diganti menjadi basis 2 atau 10 dikarenakan rumusan menghitung shannon entropy
     def entropy_calculate_2(self, s):
         x_value = [x for x, n_x in collections.Counter(s).items()]
         probabilities = [n_x / len(s) for x, n_x in collections.Counter(s).items()]
-        e_x = [-p_x * math.log(p_x, 2) for p_x in probabilities]
+        e_x = [-p_x * math.log(p_x, 10) for p_x in probabilities]
         entropy_df = dict(zip(x_value, e_x))
         return entropy_df
 
@@ -215,14 +216,14 @@ class entropy_model:
         self.list_entropy_dalam = []
         return
 
-    # patokan menggunakan SRCIP
+    # patokan menggunakan SRCIP namun sistem sudah dinamis sisa dipikirkan bagaimana bila ada lebih dari satu fitur yang dimasukann
     def new_label(self, list_entropy, listdata, status, iterasi):
         counter_data = 0
         loop_data = len(list_entropy)
         for x in listdata:
             if (list_entropy.get(x) == None) or (status[iterasi].get(x) == None):
                 continue
-            elif list_entropy.get(x) > status[iterasi].get(x):
+            elif list_entropy.get(x) < status[iterasi].get(x):
                 self.hasil.append(1)
             else:
                 self.hasil.append(0)
@@ -238,10 +239,11 @@ class entropy_model:
             data_count = len(x)
             if counter_data > self.mean_count:
                 check_monotone_value = self.monotone_decreasing(list_mean)
-                if check_monotone_value:
-                    print("Instrusi Terjadi")
-                else:
-                    print("Jaringan Normal")
+                # buka komentar ketika sudah ingin implementasi dengan sistem deteksi
+                # if check_monotone_value:
+                #     print("Instrusi Terjadi")
+                # else:
+                #     print("Jaringan Normal")
                 list_mean = []
                 counter_data = 0
 
@@ -299,12 +301,12 @@ def main():
     model = entropy_model(10, 5)
     threshold_value = model.check_entropy_all(x)
 
-    model.new_get_entropy_prediction(x)
-    list_luar = model.get_list_luar()
+    print(threshold_value)
 
-    predict_result = model.loop_hasil(list_luar, threshold_value)
+    # model.new_get_entropy_prediction(x)
+    # list_luar = model.get_list_luar()
 
-    print(len(predict_result))
+    # predict_result = model.loop_hasil(list_luar, threshold_value)
 
     # print(confusion_matrix(y, predict_result))
     # print(classification_report(y, predict_result))
