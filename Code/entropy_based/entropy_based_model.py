@@ -194,7 +194,7 @@ class entropy_model:
         for x, y in df.iterrows():
             self.list_entropy_dalam.append(y.values)
             if counter == self.cut_value:
-                for i in range(df_columns_len - 1):
+                for i in range(df_columns_len):
                     list_output = self.create_toList(self.list_entropy_dalam, i)
                     entropy_value = self.entropy_calculate_2(list_output)
                     mean_value = self.search_threshold(entropy_value)
@@ -204,51 +204,68 @@ class entropy_model:
                 list_luar = []
                 counter = 0
             counter += 1
+
+        # input Last Value Group Value
+        for i in range(df_columns_len):
+            list_output = self.create_toList(self.list_entropy_dalam, i)
+            entropy_value = self.entropy_calculate_2(list_output)
+            mean_value = self.search_threshold(entropy_value)
+            list_luar.append([entropy_value, mean_value, list_output])
+        self.list_entropy_luar.append(list_luar)
+        self.list_entropy_dalam = []
         return
 
-    def new_label(self, listdata, status):
+    # patokan menggunakan SRCIP
+    def new_label(self, list_entropy, listdata, status, iterasi):
+        counter_data = 0
+        loop_data = len(list_entropy)
         for x in listdata:
-            for j in x:
-                if status:
-                    self.hasil.append(1)
-                else:
-                    self.hasil.append(0)
+            if (list_entropy.get(x) == None) or (status[iterasi].get(x) == None):
+                continue
+            elif list_entropy.get(x) > status[iterasi].get(x):
+                self.hasil.append(1)
+            else:
+                self.hasil.append(0)
+        return
 
-    def loop_hasil(self, listdata):
-        list_hasil = list()
-        list_entropy = list()
-        list_output = list()
-        counter = 0
+    def loop_hasil(self, listdata, list_threshold):
+        threshold_list = list_threshold
+        counter_data = 0
+        data_count = 0
+        list_mean = list()
+        iterasi = 1
         for x in listdata:
-            for j in x:
-                list_entropy.append(list(j[0].values()))
-                list_hasil.append(j[1])
-                list_output.append(j[2])
-
-            if counter == self.mean_count:
-                check_monoton_turun = self.monotone_decreasing(list_hasil)
-                threshold = np.mean(list_hasil)
-                if check_monoton_turun:
-                    self.new_label(list_output, True)
+            data_count = len(x)
+            if counter_data > self.mean_count:
+                check_monotone_value = self.monotone_decreasing(list_mean)
+                if check_monotone_value:
+                    print("Instrusi Terjadi")
                 else:
-                    self.new_label(list_output, False)
-                list_entropy = []
-                list_hasil = []
-                list_output = []
-                counter = 0
-            counter += 1
+                    print("Jaringan Normal")
+                list_mean = []
+                counter_data = 0
 
-        check_monoton_turun = self.monotone_decreasing(list_hasil)
-        threshold = np.mean(list_hasil)
-        if check_monoton_turun:
-            self.new_label(list_output, True)
-        else:
-            self.new_label(list_output, False)
-
-        for i in range(6):
-            self.hasil.append(1)
-
+            for j in x:
+                # Note saat ini cuma melihat SRCIP saja
+                if iterasi >= data_count:
+                    iterasi = 1
+                    break
+                else:
+                    self.new_label(j[0], j[2], threshold_list, iterasi - 1)
+                    list_mean.append(j[1])
+                    iterasi += 1
+            counter_data += 1
         return self.hasil
+
+    def check_entropy_all(self, df):
+        df_columns = list(df.columns)
+        list_hasil = list()
+        max_entropy = list()
+        for x in df_columns:
+            list_hasil = df[x].tolist()
+            entropy_value = self.entropy_calculate_2(list_hasil)
+            max_entropy.append(entropy_value)
+        return max_entropy
 
 
 def normalization_dataset(df):
@@ -275,16 +292,19 @@ def main():
     ######################## NEW SCENARIO ###################################
 
     # splitting data
-    # x = df[["srcIP", "dstIP"]]
-    # y = df["label"]
+    x = df[["srcIP", "dstIP"]]
+    y = df["label"]
 
     # creating model with windows size and mean_count
-    # model = entropy_model(10, 5)
-    # model.new_get_entropy_prediction(x)
+    model = entropy_model(10, 5)
+    threshold_value = model.check_entropy_all(x)
 
-    # list_luar = model.get_list_luar()
-    # print(list_luar[0])
-    # predict_result = model.loop_hasil(list_luar)
+    model.new_get_entropy_prediction(x)
+    list_luar = model.get_list_luar()
+
+    predict_result = model.loop_hasil(list_luar, threshold_value)
+
+    print(len(predict_result))
 
     # print(confusion_matrix(y, predict_result))
     # print(classification_report(y, predict_result))
@@ -295,55 +315,53 @@ def main():
     ######################## OLD SCENARIO ###################################
     # splitting data (bisa dipilih menggunakan yang mana)
     # x = df[df.columns[:17]]
-    x = df[["pktcount", "bytecount", "Protocol"]]
-
-    y = df["label"]
+    # x = df[["pktcount", "bytecount", "Protocol"]]
+    # y = df["label"]
 
     # normalize data for same range
     # x = normalization_dataset(x)
 
     # windows size dan count size bisa diganti saat membangun model
-    model = entropy_model(18, 10)
-    df_entropy = model.calculate_all_entropy(x)
+    # model = entropy_model(18, 10)
+    # df_entropy = model.calculate_all_entropy(x)
 
     # threshold bisa diganti dengan nilai terbesar/nilai mean/nilai yang didefinisikan sendiri
     # 2.782777146007937
-    threshold = np.mean(df_entropy)
+    # threshold = np.mean(df_entropy)
 
     # model.check_entropy_value(x)
 
     # Mean Testing Model
 
-    model.get_entropy_prediction(x)
-    predict_result = model.get_prediction_result(threshold)
+    # model.get_entropy_prediction(x)
+    # predict_result = model.get_prediction_result(threshold)
 
-    print("Mean Version")
-    print(confusion_matrix(y, predict_result))
-    print(classification_report(y, predict_result))
-    print(
-        "Accuracy:", accuracy_score(y, predict_result) * 100,
-    )
+    # print("Mean Version")
+    # print(confusion_matrix(y, predict_result))
+    # print(classification_report(y, predict_result))
+    # print(
+    #     "Accuracy:", accuracy_score(y, predict_result) * 100)
 
     # Individual Comparising to Threshold Testing Value (Perlu di evaluasi karena metode kurang pas)
 
     # dapat diganti count size dan windows sizenya
-    model_2 = entropy_model(10, 10)
+    # model_2 = entropy_model(10, 10)
 
     # threshold bisa diganti dengan nilai terbesar/nilai mean/nilai yang didefinisikan sendiri
-    threshold_2 = max(df_entropy)
+    # threshold_2 = max(df_entropy)
 
-    predict_result_individual = model_2.get_entropy_prediction_individual(
-        x, threshold_2
-    )
+    # predict_result_individual = model_2.get_entropy_prediction_individual(
+    #     x, threshold_2
+    # )
 
-    print("Individual Version")
-    print(confusion_matrix(y, predict_result_individual))
-    print(
-        classification_report(
-            y, predict_result_individual, labels=np.unique(predict_result_individual)
-        )
-    )
-    print("Accuracy:", accuracy_score(y, predict_result_individual) * 100)
+    # print("Individual Version")
+    # print(confusion_matrix(y, predict_result_individual))
+    # print(
+    #     classification_report(
+    #         y, predict_result_individual, labels=np.unique(predict_result_individual)
+    #     )
+    # )
+    # print("Accuracy:", accuracy_score(y, predict_result_individual) * 100)
 
 
 if __name__ == "__main__":
