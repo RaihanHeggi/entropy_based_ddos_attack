@@ -32,14 +32,6 @@ class entropy_model:
         dist = [x / sum(bases) for x in bases]
         return entropy(dist, base=2.0)
 
-    # nilai pada log bisa diganti menjadi basis 2 atau 10 dikarenakan rumusan menghitung shannon entropy
-    def entropy_calculate_2(self, s):
-        x_value = [x for x, n_x in collections.Counter(s).items()]
-        probabilities = [n_x / len(s) for x, n_x in collections.Counter(s).items()]
-        e_x = [-p_x * math.log(p_x, 10) for p_x in probabilities]
-        entropy_df = dict(zip(x_value, e_x))
-        return entropy_df
-
     # Fungsi Cek Nilai Monoton Turun
     def monotone_decreasing(self, list_value):
         pairs = zip(list_value, list_value[:0])
@@ -176,6 +168,14 @@ class entropy_model:
     ########################################## NEW CODE ################################################
     # Calculate Entropy Value and Cut on Windows Size
 
+    # nilai pada log bisa diganti menjadi basis 2 atau 10 dikarenakan rumusan menghitung shannon entropy
+    def entropy_calculate_2(self, s):
+        x_value = [x for x, n_x in collections.Counter(s).items()]
+        probabilities = [n_x / len(s) for x, n_x in collections.Counter(s).items()]
+        e_x = [-p_x * math.log(p_x, 2) for p_x in probabilities]
+        entropy_df = dict(zip(x_value, e_x))
+        return entropy_df
+
     def search_threshold(self, x):
         # get max value for threshold
         all_values = x.values()
@@ -218,12 +218,13 @@ class entropy_model:
 
     # patokan menggunakan SRCIP namun sistem sudah dinamis sisa dipikirkan bagaimana bila ada lebih dari satu fitur yang dimasukann
     def new_label(self, list_entropy, listdata, status, iterasi):
+        # use status[iterasi].get(x) if threshold using dict
         counter_data = 0
         loop_data = len(list_entropy)
         for x in listdata:
-            if (list_entropy.get(x) == None) or (status[iterasi].get(x) == None):
+            if (list_entropy.get(x) == None) or (status[iterasi] == None):
                 continue
-            elif list_entropy.get(x) < status[iterasi].get(x):
+            elif list_entropy.get(x) < status[iterasi]:
                 self.hasil.append(1)
             else:
                 self.hasil.append(0)
@@ -269,6 +270,17 @@ class entropy_model:
             max_entropy.append(entropy_value)
         return max_entropy
 
+    def check_maximum_entropy(self, threshold):
+        dictionary_hasil = dict()
+        maximum = list()
+        value_max = list()
+        for x in threshold:
+            nilai_max = max(x, key=x.get)
+            maximum.append(nilai_max)  # Just use 'min' instead of 'max' for minimum.
+            value_max.append(x[nilai_max])
+        dictionary_hasil = dict(zip(maximum, value_max))
+        return list(dictionary_hasil.values())
+
 
 def normalization_dataset(df):
     scaler = MinMaxScaler()
@@ -301,18 +313,19 @@ def main():
     model = entropy_model(10, 5)
     threshold_value = model.check_entropy_all(x)
 
-    print(threshold_value)
+    # Skenario menggunakan max_threshold
+    max_threshold = model.check_maximum_entropy(threshold_value)
 
-    # model.new_get_entropy_prediction(x)
-    # list_luar = model.get_list_luar()
+    model.new_get_entropy_prediction(x)
+    list_luar = model.get_list_luar()
 
-    # predict_result = model.loop_hasil(list_luar, threshold_value)
+    predict_result = model.loop_hasil(list_luar, max_threshold)
 
-    # print(confusion_matrix(y, predict_result))
-    # print(classification_report(y, predict_result))
-    # print(
-    #     "Accuracy:", accuracy_score(y, predict_result) * 100,
-    # )
+    print(confusion_matrix(y, predict_result))
+    print(classification_report(y, predict_result))
+    print(
+        "Accuracy:", accuracy_score(y, predict_result) * 100,
+    )
 
     ######################## OLD SCENARIO ###################################
     # splitting data (bisa dipilih menggunakan yang mana)
