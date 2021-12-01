@@ -173,8 +173,10 @@ class entropy_model:
         x_value = [x for x, n_x in collections.Counter(s).items()]
         probabilities = [n_x / len(s) for x, n_x in collections.Counter(s).items()]
         e_x = [-p_x * math.log(p_x, 2) for p_x in probabilities]
+        n_e = [h / math.log(len(s), 10) for h in e_x]
         entropy_df = dict(zip(x_value, e_x))
-        return entropy_df
+        normalize_entropy = dict(zip(x_value, n_e))
+        return entropy_df, normalize_entropy
 
     def search_threshold(self, x):
         # get max value for threshold
@@ -197,9 +199,13 @@ class entropy_model:
             if counter == self.cut_value:
                 for i in range(df_columns_len):
                     list_output = self.create_toList(self.list_entropy_dalam, i)
-                    entropy_value = self.entropy_calculate_2(list_output)
+                    entropy_value, normalized_entropy = self.entropy_calculate_2(
+                        list_output
+                    )
                     mean_value = self.search_threshold(entropy_value)
-                    list_luar.append([entropy_value, mean_value, list_output])
+                    list_luar.append(
+                        [entropy_value, mean_value, list_output, normalized_entropy]
+                    )
                 self.list_entropy_luar.append(list_luar)
                 self.list_entropy_dalam = []
                 list_luar = []
@@ -209,9 +215,11 @@ class entropy_model:
         # input Last Value Group Value
         for i in range(df_columns_len):
             list_output = self.create_toList(self.list_entropy_dalam, i)
-            entropy_value = self.entropy_calculate_2(list_output)
+            entropy_value, normalized_entropy = self.entropy_calculate_2(list_output)
             mean_value = self.search_threshold(entropy_value)
-            list_luar.append([entropy_value, mean_value, list_output])
+            list_luar.append(
+                [entropy_value, mean_value, list_output, normalized_entropy]
+            )
         self.list_entropy_luar.append(list_luar)
         self.list_entropy_dalam = []
         return
@@ -222,32 +230,38 @@ class entropy_model:
         counter_data = 0
         loop_data = len(list_entropy)
         for x in listdata:
-            if (list_entropy.get(x) == None) or (status[iterasi] == None):
+            if (list_entropy.get(x) == None) or (status[iterasi].get(x) == None):
                 continue
-            elif list_entropy.get(x) < status[iterasi]:
+            elif list_entropy.get(x) < status[iterasi].get(x):
                 self.hasil.append(1)
             else:
                 self.hasil.append(0)
         return
 
+    def normalized_entropy(self, normalize_threshold, list_threshold, iterasi):
+        print(list_threshold)
+
+        return
+        # dict_key = list()
+        # list_hasil = list()
+        # for x in normalize_threshold:
+        #     dict_key = x.keys()
+        #     for i in dict_key:
+        #         if normalize_threshold.get(i) < list_threshold[iterasi].get(i):
+        #             list_hasil.append([i, True])
+        #         else:
+        #             list_hasil.append([i, False])
+        # return list_hasil
+
     def loop_hasil(self, listdata, list_threshold):
-        threshold_list = list_threshold
         counter_data = 0
+        threshold_list = list_threshold
         data_count = 0
         list_mean = list()
+        list_normal_entropy = list()
         iterasi = 1
         for x in listdata:
             data_count = len(x)
-            if counter_data > self.mean_count:
-                check_monotone_value = self.monotone_decreasing(list_mean)
-                # buka komentar ketika sudah ingin implementasi dengan sistem deteksi
-                # if check_monotone_value:
-                #     print("Instrusi Terjadi")
-                # else:
-                #     print("Jaringan Normal")
-                list_mean = []
-                counter_data = 0
-
             for j in x:
                 # Note saat ini cuma melihat SRCIP saja
                 if iterasi >= data_count:
@@ -256,7 +270,23 @@ class entropy_model:
                 else:
                     self.new_label(j[0], j[2], threshold_list, iterasi - 1)
                     list_mean.append(j[1])
+                    list_normal_entropy.append(j[3])
                     iterasi += 1
+
+            if counter_data > self.mean_count:
+                check_normalized_value = self.normalized_entropy(
+                    list_normal_entropy, threshold_list
+                )
+                print(check_normalized_value)
+                # buka komentar ketika sudah ingin implementasi dengan sistem deteksi
+                # if check_monotone_value:
+                #     print("Instrusi Terjadi")
+                # else:
+                #     print("Jaringan Normal")
+                list_mean = []
+                list_normal_entropy = []
+                counter_data = 0
+                break
             counter_data += 1
         return self.hasil
 
@@ -311,21 +341,21 @@ def main():
 
     # creating model with windows size and mean_count
     model = entropy_model(10, 5)
-    threshold_value = model.check_entropy_all(x)
+    threshold_value, normalize_threshold = model.check_entropy_all(x)
 
     # Skenario menggunakan max_threshold
-    max_threshold = model.check_maximum_entropy(threshold_value)
+    # max_threshold = model.check_maximum_entropy(threshold_value)
 
     model.new_get_entropy_prediction(x)
     list_luar = model.get_list_luar()
 
-    predict_result = model.loop_hasil(list_luar, max_threshold)
+    predict_result = model.loop_hasil(list_luar, threshold_value)
 
-    print(confusion_matrix(y, predict_result))
-    print(classification_report(y, predict_result))
-    print(
-        "Accuracy:", accuracy_score(y, predict_result) * 100,
-    )
+    # print(confusion_matrix(y, predict_result))
+    # print(classification_report(y, predict_result))
+    # print(
+    #     "Accuracy:", accuracy_score(y, predict_result) * 100,
+    # )
 
     ######################## OLD SCENARIO ###################################
     # splitting data (bisa dipilih menggunakan yang mana)
