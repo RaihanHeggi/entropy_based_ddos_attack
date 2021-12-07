@@ -12,6 +12,7 @@ from sklearn.metrics import classification_report
 from sklearn.metrics import confusion_matrix
 from scipy.stats import entropy
 from sklearn.preprocessing import MinMaxScaler
+from sympy import *
 
 
 class entropy_model:
@@ -30,7 +31,7 @@ class entropy_model:
     def entropy_calculate_2(self, s):
         x_value = [x for x, n_x in collections.Counter(s).items()]
         probabilities = [n_x / len(s) for x, n_x in collections.Counter(s).items()]
-        e_x = [-p_x * math.log(p_x, 2) for p_x in probabilities]
+        e_x = [-p_x * math.log(p_x + 0.1, 2) for p_x in probabilities]
         n_e = [h / math.log(len(s), 10) for h in e_x]
         entropy_df = dict(zip(x_value, e_x))
         normalize_entropy = dict(zip(x_value, n_e))
@@ -113,12 +114,43 @@ class entropy_model:
                         list_hasil.append([i, False])
         return list_hasil
 
+    def check_maximum_entropy(self, threshold):
+        dictionary_hasil = dict()
+        maximum = list()
+        value_max = list()
+        for x in threshold:
+            nilai_max = max(x, key=x.get)
+            maximum.append(nilai_max)  # Just use 'min' instead of 'max' for minimum.
+            value_max.append(x[nilai_max])
+        dictionary_hasil = dict(zip(maximum, value_max))
+        return list(dictionary_hasil.values())
+
+    def calculate_limit(self, list_entropy, list_data, max_value):
+        x_value = [x for x, n_x in collections.Counter(list_data).items()]
+        n_x_value = [n_x for x, n_x in collections.Counter(list_data).items()]
+        count_value = dict(zip(x_value, n_x_value))
+        for x in x_value:
+            if count_value.get(x) != None:
+                z = symbols("x")
+                limit_value = limit(
+                    (1 / count_value.get(x)) * list_entropy.get(x), z, oo,
+                )
+                if limit_value <= max_value:
+                    print("Intrusi Terjadi")
+                else:
+                    print("Jaringan Normal")
+            else:
+                continue
+        return
+
     def loop_hasil(self, listdata, list_threshold):
         counter_data = 0
         threshold_list = list_threshold
         data_count = 0
         # list_mean = list()
         list_normal_entropy = list()
+        list_windows_entropy = list()
+        list_entropy_only = list()
         iterasi = 1
         for x in listdata:
             data_count = len(x)
@@ -131,20 +163,29 @@ class entropy_model:
                     self.new_label(j[0], j[2], threshold_list, iterasi - 1)
                     # list_mean.append(j[1])
                     list_normal_entropy.append(j[3])
+                    list_windows_entropy.append([j[0], j[2]])
+                    list_entropy_only.append(j[0])
                     iterasi += 1
 
             if counter_data > self.mean_count:
                 check_normalized_value = self.normalized_entropy(
                     list_normal_entropy, threshold_list
                 )
+                maximum_value = self.check_maximum_entropy(list_entropy_only)
+
                 # buka komentar ketika sudah ingin implementasi dengan sistem deteksi
                 for x in check_normalized_value:
                     if x[1]:
-                        print("Instrusi Terjadi")
+                        # pengecekan lebih lanjut
+                        for x in list_windows_entropy:
+                            for i in range(len(maximum_value)):
+                                self.calculate_limit(x[0], x[1], maximum_value[i])
                     else:
                         print("Jaringan Normal")
                 # list_mean = []
                 list_normal_entropy = []
+                list_windows_entropy = []
+                list_entropy_only = []
                 counter_data = 0
             counter_data += 1
         return self.hasil
