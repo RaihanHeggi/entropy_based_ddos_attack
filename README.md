@@ -25,3 +25,6 @@ Image of Running Testing Using (Bytes, Packetcount, and Protocol Parameters)
 ![image](https://user-images.githubusercontent.com/58820833/143678576-b53354e9-a36a-46c8-9e89-7ab45f4f80cd.png)
 
 
+how to running ryu controller 
+sudo ryu-manager --observe-links ryu/app/simple_switch_13.py ryu/app/gui_topology/gui_topology.py simple_monitor_detect.py
+
