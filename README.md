@@ -1,5 +1,4 @@
-# markov_chain_ddos_attack
-Using Markov Chain For Detecting DDoS Attack (Ongoing Jobs)
+# Entropy Based DDoS Attack Detection on SDN Network
 
 Workflow 
 1. Preprocessing Data For Feature Selection 
